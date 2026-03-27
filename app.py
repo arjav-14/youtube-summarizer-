@@ -204,37 +204,79 @@ def process_video(url, api_key, model_size, chunk_size):
         progress_bar.progress(10)
         
         # Step 1: Extract transcript (prioritize captions for Streamlit Cloud)
+        status_text.text("🔍 Checking for captions...")
+        progress_bar.progress(10)
+        
         transcript = extract_transcript(video_id)
         
         if transcript:
-            status_text.text("✅ Transcript extracted successfully!")
+            status_text.text("✅ Captions found! Processing transcript...")
             progress_bar.progress(30)
             transcript_method = "captions"
+            st.success("🎉 Perfect! This video has captions available for processing.")
         else:
-            # Step 2: Download audio if no transcript
-            status_text.text("⬇️ Downloading audio...")
-            progress_bar.progress(20)
+            # No captions available - try audio processing with user choice
+            st.warning("🔇 No captions found for this video.")
             
-            audio_file = download_audio(url)
+            # Give user choice
+            col1, col2 = st.columns(2)
             
-            print("Audio file:", audio_file)
-            print("File exists:", os.path.exists(audio_file) if audio_file else "No file returned")
+            with col1:
+                if st.button("🎤 Try Audio Processing", help="Attempt to download and transcribe audio"):
+                    st.session_state.audio_processing = True
+                    status_text.text("⬇️ Downloading audio...")
+                    progress_bar.progress(20)
+                    
+                    audio_file = download_audio(url)
+                    
+                    print("Audio file:", audio_file)
+                    print("File exists:", os.path.exists(audio_file) if audio_file else "No file returned")
+                    
+                    if audio_file:
+                        status_text.text("🎤 Transcribing audio...")
+                        progress_bar.progress(40)
+                        transcript = convert_audio_to_text(audio_file, model_size)
+                        cleanup_audio(audio_file)  # Clean up audio file
+                        
+                        if transcript:
+                            status_text.text("✅ Audio transcribed successfully!")
+                            progress_bar.progress(50)
+                            transcript_method = "whisper"
+                            st.success("🎉 Audio processing completed!")
+                        else:
+                            st.error("❌ Failed to transcribe audio. Streamlit Cloud has restrictions on audio downloads.")
+                            st.info("💡 **Alternative Solutions:**")
+                            st.info("- 🌐 Deploy to Railway for better audio support")
+                            st.info("- 🏠 Run locally (no restrictions)")
+                            st.info("- 📚 Try videos with captions instead")
+                            return
+                    else:
+                        st.error("❌ Failed to download audio due to Streamlit Cloud restrictions.")
+                        st.info("💡 **Why this happens:** Streamlit Cloud limits network downloads for security.")
+                        return
             
-            if audio_file:
-                transcript = convert_audio_to_text(audio_file, model_size)
-                cleanup_audio(audio_file)  # Clean up audio file
-            else:
-                st.error("❌ Failed to download audio. This might be due to Streamlit Cloud restrictions. Try videos with captions available.")
-                st.info("💡 Tip: Videos with captions work better on Streamlit Cloud. Try educational content or news videos.")
-                return
+            with col2:
+                if st.button("📚 Try Another Video", help="Choose a video with captions"):
+                    st.info("🎯 **Videos with captions work best on Streamlit Cloud:**")
+                    st.info("- 📚 Educational content (Khan Academy, MIT)")
+                    st.info("- 📰 News videos (BBC, CNN)")
+                    st.info("- 🎓 University lectures")
+                    st.info("- 📺 Documentaries")
+                    return
             
-            if not transcript:
-                st.error("❌ Failed to transcribe audio. Please try again.")
-                return
+            # If user hasn't made a choice, show helpful info
+            st.markdown("---")
+            st.markdown("### 🎯 **Streamlit Cloud Tips:**")
+            st.markdown("- 📚 **Captioned videos** work reliably")
+            st.markdown("- 🎤 **Audio processing** may fail due to restrictions")
+            st.markdown("- 🌐 **Alternative platforms** like Railway support audio better")
             
-            status_text.text("✅ Audio transcribed successfully!")
-            progress_bar.progress(50)
-            transcript_method = "whisper"
+            st.markdown("### � **Test with these captioned videos:**")
+            st.markdown("- https://www.youtube.com/watch?v=jNQXAC9IVRw (First YouTube video)")
+            st.markdown("- https://www.youtube.com/watch?v=J_GJeY9lGgM (Khan Academy)")
+            st.markdown("- https://www.youtube.com/watch?v=dQw4w9WgXcQ (Educational)")
+            
+            return
         
         # Clean transcript
         transcript = clean_transcript(transcript)
