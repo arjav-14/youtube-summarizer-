@@ -203,6 +203,7 @@ def process_video(url, api_key, model_size, chunk_size):
         status_text.text("🔍 Extracting transcript...")
         progress_bar.progress(10)
         
+        # Step 1: Extract transcript (prioritize captions for Streamlit Cloud)
         transcript = extract_transcript(video_id)
         
         if transcript:
@@ -223,7 +224,8 @@ def process_video(url, api_key, model_size, chunk_size):
                 transcript = convert_audio_to_text(audio_file, model_size)
                 cleanup_audio(audio_file)  # Clean up audio file
             else:
-                st.error("❌ Failed to download audio")
+                st.error("❌ Failed to download audio. This might be due to Streamlit Cloud restrictions. Try videos with captions available.")
+                st.info("💡 Tip: Videos with captions work better on Streamlit Cloud. Try educational content or news videos.")
                 return
             
             if not transcript:
