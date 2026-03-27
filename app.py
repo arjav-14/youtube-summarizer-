@@ -224,36 +224,6 @@ def process_video(url, api_key, model_size, chunk_size):
             with col1:
                 if st.button("🎤 Try Audio Processing", help="Attempt to download and transcribe audio"):
                     st.session_state.audio_processing = True
-                    status_text.text("⬇️ Downloading audio...")
-                    progress_bar.progress(20)
-                    
-                    audio_file = download_audio(url)
-                    
-                    print("Audio file:", audio_file)
-                    print("File exists:", os.path.exists(audio_file) if audio_file else "No file returned")
-                    
-                    if audio_file:
-                        status_text.text("🎤 Transcribing audio...")
-                        progress_bar.progress(40)
-                        transcript = convert_audio_to_text(audio_file, model_size)
-                        cleanup_audio(audio_file)  # Clean up audio file
-                        
-                        if transcript:
-                            status_text.text("✅ Audio transcribed successfully!")
-                            progress_bar.progress(50)
-                            transcript_method = "whisper"
-                            st.success("🎉 Audio processing completed!")
-                        else:
-                            st.error("❌ Failed to transcribe audio. Streamlit Cloud has restrictions on audio downloads.")
-                            st.info("💡 **Alternative Solutions:**")
-                            st.info("- 🌐 Deploy to Railway for better audio support")
-                            st.info("- 🏠 Run locally (no restrictions)")
-                            st.info("- 📚 Try videos with captions instead")
-                            return
-                    else:
-                        st.error("❌ Failed to download audio due to Streamlit Cloud restrictions.")
-                        st.info("💡 **Why this happens:** Streamlit Cloud limits network downloads for security.")
-                        return
             
             with col2:
                 if st.button("📚 Try Another Video", help="Choose a video with captions"):
@@ -264,19 +234,56 @@ def process_video(url, api_key, model_size, chunk_size):
                     st.info("- 📺 Documentaries")
                     return
             
-            # If user hasn't made a choice, show helpful info
-            st.markdown("---")
-            st.markdown("### 🎯 **Streamlit Cloud Tips:**")
-            st.markdown("- 📚 **Captioned videos** work reliably")
-            st.markdown("- 🎤 **Audio processing** may fail due to restrictions")
-            st.markdown("- 🌐 **Alternative platforms** like Railway support audio better")
-            
-            st.markdown("### � **Test with these captioned videos:**")
-            st.markdown("- https://www.youtube.com/watch?v=jNQXAC9IVRw (First YouTube video)")
-            st.markdown("- https://www.youtube.com/watch?v=J_GJeY9lGgM (Khan Academy)")
-            st.markdown("- https://www.youtube.com/watch?v=dQw4w9WgXcQ (Educational)")
-            
-            return
+            # Check if user chose audio processing
+            if st.session_state.get('audio_processing', False):
+                status_text.text("⬇️ Downloading audio...")
+                progress_bar.progress(20)
+                
+                audio_file = download_audio(url)
+                
+                print("Audio file:", audio_file)
+                print("File exists:", os.path.exists(audio_file) if audio_file else "No file returned")
+                
+                if audio_file:
+                    status_text.text("🎤 Transcribing audio...")
+                    progress_bar.progress(40)
+                    transcript = convert_audio_to_text(audio_file, model_size)
+                    cleanup_audio(audio_file)  # Clean up audio file
+                    
+                    if transcript:
+                        status_text.text("✅ Audio transcribed successfully!")
+                        progress_bar.progress(50)
+                        transcript_method = "whisper"
+                        st.success("🎉 Audio processing completed!")
+                        # Clear the session state
+                        st.session_state.audio_processing = False
+                    else:
+                        st.error("❌ Failed to transcribe audio. Streamlit Cloud has restrictions on audio downloads.")
+                        st.info("💡 **Alternative Solutions:**")
+                        st.info("- 🌐 Deploy to Railway for better audio support")
+                        st.info("- 🏠 Run locally (no restrictions)")
+                        st.info("- 📚 Try videos with captions instead")
+                        st.session_state.audio_processing = False
+                        return
+                else:
+                    st.error("❌ Failed to download audio due to Streamlit Cloud restrictions.")
+                    st.info("💡 **Why this happens:** Streamlit Cloud limits network downloads for security.")
+                    st.session_state.audio_processing = False
+                    return
+            else:
+                # If user hasn't made a choice, show helpful info
+                st.markdown("---")
+                st.markdown("### 🎯 **Streamlit Cloud Tips:**")
+                st.markdown("- 📚 **Captioned videos** work reliably")
+                st.markdown("- 🎤 **Audio processing** may fail due to restrictions")
+                st.markdown("- 🌐 **Alternative platforms** like Railway support audio better")
+                
+                st.markdown("### 🔗 **Test with these captioned videos:**")
+                st.markdown("- https://www.youtube.com/watch?v=jNQXAC9IVRw (First YouTube video)")
+                st.markdown("- https://www.youtube.com/watch?v=J_GJeY9lGgM (Khan Academy)")
+                st.markdown("- https://www.youtube.com/watch?v=dQw4w9WgXcQ (Educational)")
+                
+                return
         
         # Clean transcript
         transcript = clean_transcript(transcript)
