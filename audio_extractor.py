@@ -22,7 +22,7 @@ def download_audio(url, output_path="audio"):
     Returns:
         str: Path to downloaded audio file or None if failed
     """
-    # Download audio with FFmpeg postprocessing for MP3 conversion
+    # Download audio with Streamlit Cloud compatible settings
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': f'{output_path}.%(ext)s',
@@ -33,42 +33,73 @@ def download_audio(url, output_path="audio"):
         }],
         'quiet': False,
         'no_warnings': False,
+        'no_check_certificate': True,  # Skip SSL verification for Streamlit Cloud
+        'socket_timeout': 60,  # Increase timeout
+        'retries': 3,  # Retry failed downloads
     }
 
     try:
-        print(f"Current working directory: {os.getcwd()}")
-        print(f"Looking for files with pattern: {output_path}")
+        # Use temporary directory for Streamlit Cloud
+        import tempfile
+        temp_dir = tempfile.mkdtemp()
+        print(f"Using temporary directory: {temp_dir}")
+        
+        # Update output path to use temp directory
+        temp_output_path = os.path.join(temp_dir, output_path)
+        ydl_opts['outtmpl'] = os.path.join(temp_dir, f'{output_path}.%(ext)s')
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
         
         print("Download completed. Checking files...")
         
-        # List all files in current directory
-        all_files = os.listdir('.')
-        print(f"All files in directory: {all_files}")
+        # List all files in temp directory
+        all_files = os.listdir(temp_dir)
+        print(f"All files in temp directory: {all_files}")
         
         # Check for different possible extensions
         possible_files = [
-            f"{output_path}.mp3",
-            f"{output_path}.webm", 
-            f"{output_path}.m4a"
+            os.path.join(temp_dir, f"{output_path}.mp3"),
+            os.path.join(temp_dir, f"{output_path}.webm"), 
+            os.path.join(temp_dir, f"{output_path}.m4a")
         ]
         
         for file_path in possible_files:
-            abs_path = os.path.abspath(file_path)
-            print(f"Checking for file: {abs_path}")
-            print(f"File exists: {os.path.exists(abs_path)}")
-            if os.path.exists(abs_path):
-                print(f"Found audio file: {abs_path}")
-                print(f"File size: {os.path.getsize(abs_path)} bytes")
-                return abs_path
+            if os.path.exists(file_path):
+                print(f"Found audio file: {file_path}")
+                print(f"File size: {os.path.getsize(file_path)} bytes")
+                return file_path
         
         print("No audio file found after download")
         return None
 
     except Exception as e:
         print("Download error:", e)
+        # Try alternative approach - direct webm download
+        try:
+            print("Trying alternative approach...")
+            ydl_opts_alt = {
+                'format': 'bestaudio[ext=webm]/bestaudio/best',
+                'outtmpl': os.path.join(temp_dir, f'{output_path}.webm'),
+                'quiet': False,
+                'no_warnings': False,
+                'no_check_certificate': True,
+                'socket_timeout': 60,
+                'retries': 3,
+                'postprocessors': [],  # No postprocessing
+            }
+            
+            with yt_dlp.YoutubeDL(ydl_opts_alt) as ydl:
+                ydl.download([url])
+            
+            webm_file = os.path.join(temp_dir, f"{output_path}.webm")
+            if os.path.exists(webm_file):
+                print(f"Found webm file: {webm_file}")
+                return webm_file
+                
+        except Exception as e2:
+            print("Alternative approach also failed:", e2)
+            
         return None
 
 def find_ffmpeg():
